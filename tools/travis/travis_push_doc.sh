@@ -1,5 +1,13 @@
 #!/bin/bash
-set -ev
+set -evE
+
+function errorTrap(){
+    echo -e "\n\n------------- Error -------------\n\nSee output above to find the cause."
+    # Wait a bit until the stdout is flushed
+    sleep 10
+    exit 1
+}
+trap errorTrap ERR
 
 # This script will only be executed on branches which are either master or a release
 # See travis_linux_after_success.sh

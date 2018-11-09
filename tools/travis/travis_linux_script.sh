@@ -1,5 +1,13 @@
 #!/bin/bash
-set -e
+set -eE
+
+function errorTrap(){
+    echo -e "\n\n------------- Error -------------\n\nSee output above to find the cause."
+    # Wait a bit until the stdout is flushed
+    sleep 10
+    exit 1
+}
+trap errorTrap ERR
 
 
 # Sonar code quality
