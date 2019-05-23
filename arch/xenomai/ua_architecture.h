@@ -111,10 +111,14 @@ void UA_sleep_ms(size_t ms);
 #endif
 
 #include <stdlib.h>
-#define UA_free free
-#define UA_malloc malloc
-#define UA_calloc calloc
-#define UA_realloc realloc
+extern void *UNIC_OPCUA_malloc(size_t size);
+extern void UNIC_OPCUA_free(void *ptr);
+extern void *UNIC_OPCUA_realloc(void *ptr, size_t size);
+extern void *UNIC_OPCUA_calloc(size_t nelem, size_t elem_size);
+#define UA_free UNIC_OPCUA_free
+#define UA_malloc UNIC_OPCUA_malloc
+#define UA_calloc UNIC_OPCUA_calloc
+#define UA_realloc UNIC_OPCUA_realloc
 
 #include <stdio.h>
 #define UA_snprintf snprintf
