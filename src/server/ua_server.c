@@ -456,10 +456,20 @@ serverExecuteRepeatedCallback(UA_Server *server, UA_ApplicationCallback cb,
 #endif
 }
 
+extern uint32_t OPCUAALGetTickCountUS(void);
+static uint32_t lastPrint_us2 = 0;
+static uint32_t sampleCallbackTimes2[10] = {0};
+
 UA_UInt16
 UA_Server_run_iterate(UA_Server *server, UA_Boolean waitInternal) {
+	uint32_t now_us = OPCUAALGetTickCountUS();
+	uint32_t newSampleCallbackTimes[10];
     /* Process repeated work */
-    UA_DateTime now = UA_DateTime_nowMonotonic();
+
+    newSampleCallbackTimes[0] = OPCUAALGetTickCountUS();
+    if (sampleCallbackTimes2[0] < newSampleCallbackTimes[0]) sampleCallbackTimes2[0] = newSampleCallbackTimes[0];
+
+	UA_DateTime now = UA_DateTime_nowMonotonic();
     UA_DateTime nextRepeated = UA_Timer_process(&server->timer, now,
                      (UA_TimerExecutionCallback)serverExecuteRepeatedCallback, server);
     UA_DateTime latest = now + (UA_MAXTIMEOUT * UA_DATETIME_MSEC);
@@ -467,6 +477,10 @@ UA_Server_run_iterate(UA_Server *server, UA_Boolean waitInternal) {
         nextRepeated = latest;
 
     UA_UInt16 timeout = 0;
+
+    newSampleCallbackTimes[1] = OPCUAALGetTickCountUS();
+    if (sampleCallbackTimes2[1] < newSampleCallbackTimes[1]) sampleCallbackTimes2[1] = newSampleCallbackTimes[1];
+
 
     /* round always to upper value to avoid timeout to be set to 0
     * if(nextRepeated - now) < (UA_DATETIME_MSEC/2) */
@@ -478,6 +492,10 @@ UA_Server_run_iterate(UA_Server *server, UA_Boolean waitInternal) {
         UA_ServerNetworkLayer *nl = &server->config.networkLayers[i];
         nl->listen(nl, server, timeout);
     }
+
+    newSampleCallbackTimes[2] = OPCUAALGetTickCountUS();
+    if (sampleCallbackTimes2[2] < newSampleCallbackTimes[2]) sampleCallbackTimes2[2] = newSampleCallbackTimes[2];
+
 
 #if defined(UA_ENABLE_DISCOVERY_MULTICAST) && !defined(UA_ENABLE_MULTITHREADING)
     if(server->config.applicationDescription.applicationType ==
@@ -498,10 +516,27 @@ UA_Server_run_iterate(UA_Server *server, UA_Boolean waitInternal) {
     UA_WorkQueue_manuallyProcessDelayed(&server->workQueue);
 #endif
 
+    newSampleCallbackTimes[3] = OPCUAALGetTickCountUS();
+    if (sampleCallbackTimes2[3] < newSampleCallbackTimes[3]) sampleCallbackTimes2[3] = newSampleCallbackTimes[3];
+
     now = UA_DateTime_nowMonotonic();
     timeout = 0;
     if(nextRepeated > now)
         timeout = (UA_UInt16)((nextRepeated - now) / UA_DATETIME_MSEC);
+
+    const u32 diff_us  = now_us - lastPrint_us2;
+    if (diff_us > 2000000U)
+    {
+    	lastPrint_us2 = now_us;
+    	printf("UA_Server_run_iterate\t%u\t%u\t%u\t%u\n",
+    			sampleCallbackTimes2[0] - now_us,
+    			sampleCallbackTimes2[1] - now_us,
+    			sampleCallbackTimes2[2] - now_us,
+    			sampleCallbackTimes2[3] - now_us
+				);
+
+    	memset((void*)sampleCallbackTimes2, 0, sizeof(sampleCallbackTimes2));
+    }
     return timeout;
 }
 

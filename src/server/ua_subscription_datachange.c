@@ -390,8 +390,13 @@ sampleCallbackWithValue(UA_Server *server, UA_Session *session,
     return UA_STATUSCODE_GOOD;
 }
 
+extern uint32_t OPCUAALGetTickCountUS(void);
+static uint32_t lastPrint_us = 0;
+static uint32_t sampleCallbackTimes[10] = {0};
 void
 UA_MonitoredItem_sampleCallback(UA_Server *server, UA_MonitoredItem *monitoredItem) {
+	uint32_t now_us = OPCUAALGetTickCountUS();
+	uint32_t newSampleCallbackTimes[10];
     UA_Subscription *sub = monitoredItem->subscription;
     UA_Session *session = &server->adminSession;
     if(sub)
@@ -411,6 +416,9 @@ UA_MonitoredItem_sampleCallback(UA_Server *server, UA_MonitoredItem *monitoredIt
     /* Get the node */
     const UA_Node *node = UA_Nodestore_getNode(server->nsCtx, &monitoredItem->monitoredNodeId);
 
+    newSampleCallbackTimes[0] = OPCUAALGetTickCountUS();
+    if (sampleCallbackTimes[0] < newSampleCallbackTimes[0]) sampleCallbackTimes[0] = newSampleCallbackTimes[0];
+
     /* Sample the value. The sample can still point into the node. */
     UA_DataValue value;
     UA_DataValue_init(&value);
@@ -426,6 +434,9 @@ UA_MonitoredItem_sampleCallback(UA_Server *server, UA_MonitoredItem *monitoredIt
         value.status = UA_STATUSCODE_BADNODEIDUNKNOWN;
     }
 
+    newSampleCallbackTimes[1] = OPCUAALGetTickCountUS();
+    if (sampleCallbackTimes[1] < newSampleCallbackTimes[1]) sampleCallbackTimes[1] = newSampleCallbackTimes[1];
+
     /* Operate on the sample */
     UA_Boolean movedValue = false;
     UA_StatusCode retval = sampleCallbackWithValue(server, session, sub, monitoredItem, &value, &movedValue);
@@ -436,11 +447,33 @@ UA_MonitoredItem_sampleCallback(UA_Server *server, UA_MonitoredItem *monitoredIt
                                UA_StatusCode_name(retval));
     }
 
+    newSampleCallbackTimes[2] = OPCUAALGetTickCountUS();
+    if (sampleCallbackTimes[2] < newSampleCallbackTimes[2]) sampleCallbackTimes[2] = newSampleCallbackTimes[2];
+
     /* Delete the sample if it was not moved to the notification. */
     if(!movedValue)
         UA_DataValue_deleteMembers(&value); /* Does nothing for UA_VARIANT_DATA_NODELETE */
     if(node)
         UA_Nodestore_releaseNode(server->nsCtx, node);
+
+    newSampleCallbackTimes[3] = OPCUAALGetTickCountUS();
+    if (sampleCallbackTimes[3] < newSampleCallbackTimes[3]) sampleCallbackTimes[3] = newSampleCallbackTimes[3];
+
+    const u32 diff_us  = now_us - lastPrint_us;
+    if (diff_us > 2000000U)
+    {
+    	lastPrint_us = now_us;
+    	printf("UA_MonitoredItem_sampleCallback\t%u\t%u\t%u\t%u\n",
+    			sampleCallbackTimes[0] - now_us,
+    			sampleCallbackTimes[1] - now_us,
+    			sampleCallbackTimes[2] - now_us,
+    			sampleCallbackTimes[3] - now_us
+				);
+
+    	memset((void*)sampleCallbackTimes, 0, sizeof(sampleCallbackTimes));
+    }
+
+
 }
 
 #endif /* UA_ENABLE_SUBSCRIPTIONS */

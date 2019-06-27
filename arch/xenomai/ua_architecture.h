@@ -131,8 +131,8 @@ extern void *UNIC_OPCUA_calloc(size_t nelem, size_t elem_size);
     const char *errno_str = gai_strerror(errno); \
     LOG; \
 }
-
-#include "../ua_architecture_functions.h"
+#include <open62541/architecture_functions.h>
+//#include "../ua_architecture_functions.h"
 
 #undef SLIST_EMPTY
 #undef SLIST_FOREACH
